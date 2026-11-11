@@ -18,6 +18,7 @@
   <properties>
     <java.version>21</java.version>
     <camel.version>4.22.2</camel.version>
+    <archunit.version>1.5.1</archunit.version>
   </properties>
 
   <modules>

@@ -14,6 +14,7 @@ Specs are in `specs/` (`requirements.md`, `high-level-architecture.md`, `integra
 | 5 | Structured JSON logging, per-application log files | done |
 | 6 | Security: inbound userid-password, operations account for actuator, credentials from env | done |
 | 7 | Sample integration: APP-B stub, APP-B client layer, Business Service, Camel route, `getSomeData` | done |
+| 8 | Architecture tests, container image, compose, end-to-end script | done |
 
 ## Prerequisites
 
@@ -25,8 +26,13 @@ Versions: Camel 4.22.2 (LTS) on Spring Boot 4.1.1, fixed in the parent `pom.xml`
 ## Build and test
 
 ```bash
-./mvnw verify
+./mvnw verify                 # unit, integration and architecture tests, builds the jars
+./scripts/e2e.sh              # end-to-end run of the built jars (starts both apps on :18080/:18081, throwaway credentials)
 ```
+
+Architecture tests (`integration-app/.../architecture/ArchitectureTest`) enforce on production code: only the APP-B client
+layer uses HTTP clients (or Camel `rest:`/`http:`), only the Business Service uses the client, and the framework never depends
+on application code. Camel `rest:`/`http:` may be used by developers in tests and dev/test only.
 
 ## Run
 
@@ -152,3 +158,25 @@ curl -i -u <inbound user>:<password> localhost:8080/api/v1/getSomeData
   Business Services only. Only the client layer talks to APP-B.
 
 To add another application, follow `specs/integration-guide.md`.
+
+## Container and on-premise
+
+The same configuration works from a plain JVM jar (on-premise, see Run) and from containers. The image runs as a non-root
+user; the audit database lives in the `/data` volume and the logs in `/logs`. Credentials are passed as environment
+variables, never baked into the image. `/actuator/health` is open for health probes.
+
+```bash
+./mvnw verify                          # builds the jars the image copies
+cp .env.example .env                   # set the values (same for INTEGRATION_APPB_* and APPB_*)
+docker compose up --build -d           # integration-app on :8080, app-b-stub internal
+curl -u <inbound user>:<password> localhost:8080/api/v1/getSomeData
+docker compose down                    # add -v to also delete the data and log volumes
+```
+
+A single image is built per jar with `docker build --build-arg JAR=<path to jar> .` (see `Dockerfile`).
+Revision 1 runs as a single instance per database file; Kubernetes/OpenShift and multi-instance are out of scope.
+
+## Not in revision 1 (future)
+
+Prometheus export, JWT bearer tokens, vault-based secrets, retry/circuit-breaker, automatic audit purge, multi-instance
+(shared database such as PostgreSQL behind the `AuditStore` abstraction).
