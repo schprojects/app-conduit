@@ -3,6 +3,7 @@ package com.integration.framework;
 import com.integration.framework.audit.AuditFilter;
 import com.integration.framework.audit.AuditStore;
 import com.integration.framework.audit.JdbcAuditStore;
+import com.integration.framework.error.GlobalExceptionHandler;
 import com.integration.framework.tracking.RequestIdGenerator;
 import com.integration.framework.tracking.RequestTrackingFilter;
 import org.springframework.boot.ApplicationRunner;
@@ -18,6 +19,11 @@ import java.time.Clock;
 @AutoConfiguration(afterName = "org.springframework.boot.jdbc.autoconfigure.JdbcTemplateAutoConfiguration")
 @EnableConfigurationProperties(IntegrationProperties.class)
 public class IntegrationFrameworkAutoConfiguration {
+
+    @Bean
+    GlobalExceptionHandler globalExceptionHandler() {
+        return new GlobalExceptionHandler();
+    }
 
     @Bean
     Clock integrationClock() {

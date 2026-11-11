@@ -10,6 +10,7 @@ Specs are in `specs/` (`requirements.md`, `high-level-architecture.md`, `integra
 | 1 | Project skeleton, app starts, health UP | done |
 | 2 | Request tracking: request id `<APP>-<12 alnum>`, `X-Request-Id` header, log context | done |
 | 3 | Audit: `AuditStore` abstraction, H2 file store (JDBC), audit record per request, startup recovery | done |
+| 4 | Standard error response, error codes, HTTP status mapping | done |
 
 ## Prerequisites
 
@@ -57,3 +58,24 @@ the `AuditStore` interface): `requestId`, `serviceName`, `operation`, `status` (
 `endTime`, `errorCode`, `errorMessage`. Times are UTC. Revision 1 runs as a single instance per database file.
 On startup, records still `STARTED` from a previous run are set to `FAILED` / `INTERNAL_ERROR` / `interrupted by restart`.
 The `data/` directory is git-ignored.
+
+## Error responses
+
+Failures return the standard body (status is always `FAILED`; the HTTP code tells the kind of failure) and the request is
+audited as `FAILED` with the same `errorCode`:
+
+```json
+{"requestId":"INTX-x7Gq2mK9pR4t","status":"FAILED","errorCode":"APPB_TIMEOUT","message":"APPB timed out"}
+```
+
+| HTTP | errorCode | Meaning |
+|------|-----------|---------|
+| 400 | `INVALID_REQUEST` | bad request |
+| 401 | `AUTH_FAILED` | authentication failure (phase 6) |
+| 404 | `UNKNOWN_OPERATION` | unknown operation |
+| 502 | `<TARGETAPP>_UNAVAILABLE` | called application returned an error / unavailable |
+| 504 | `<TARGETAPP>_TIMEOUT` | called application timed out |
+| 500 | `INTERNAL_ERROR` | internal error (details are logged, never returned) |
+
+Client layers throw `IntegrationException` (`timeout(...)`, `unavailable(...)`); `GlobalExceptionHandler` builds the response.
+Try: `curl -i localhost:8080/api/v1/unknown` returns 404 `UNKNOWN_OPERATION`.
