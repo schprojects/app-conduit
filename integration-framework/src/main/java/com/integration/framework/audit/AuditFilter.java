@@ -45,10 +45,11 @@ public class AuditFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String requestId = (String) request.getAttribute(RequestTrackingFilter.REQUEST_ID_KEY);
         MDC.put("service", serviceName);
-        MDC.put("operation", request.getRequestURI());
+        String operation = operationOf(request);
+        MDC.put("operation", operation);
         MDC.put("status", RequestStatus.STARTED.name());
         log.info("request started");
-        store.recordStart(requestId, serviceName, request.getRequestURI(), clock.instant());
+        store.recordStart(requestId, serviceName, operation, clock.instant());
         try {
             chain.doFilter(request, response);
         } catch (ServletException | IOException | RuntimeException e) {
@@ -71,6 +72,12 @@ public class AuditFilter extends OncePerRequestFilter {
         MDC.remove("status");
         MDC.remove("operation");
         MDC.remove("service");
+    }
+
+    /** The called operation is the last path segment, e.g. /api/v1/getSomeData -> getSomeData. */
+    private static String operationOf(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        return uri.substring(uri.lastIndexOf('/') + 1);
     }
 
     private static String attribute(HttpServletRequest request, String name, String fallback) {

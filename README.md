@@ -13,6 +13,7 @@ Specs are in `specs/` (`requirements.md`, `high-level-architecture.md`, `integra
 | 4 | Standard error response, error codes, HTTP status mapping | done |
 | 5 | Structured JSON logging, per-application log files | done |
 | 6 | Security: inbound userid-password, operations account for actuator, credentials from env | done |
+| 7 | Sample integration: APP-B stub, APP-B client layer, Business Service, Camel route, `getSomeData` | done |
 
 ## Prerequisites
 
@@ -29,12 +30,13 @@ Versions: Camel 4.22.2 (LTS) on Spring Boot 4.1.1, fixed in the parent `pom.xml`
 
 ## Run
 
-Credentials are required at startup (the application refuses to start without them). Copy the example env file and set
-real values (`.env` is git-ignored; never commit it):
+Credentials are required at startup (the applications refuse to start without them). Copy the example env file and set
+real values (`.env` is git-ignored; never commit it). Use the same values for `INTEGRATION_APPB_*` and `APPB_*`:
 
 ```bash
 cp .env.example .env     # then edit the values
-java -jar integration-app/target/integration-app-0.1.0-SNAPSHOT.jar
+java -jar app-b-stub/target/app-b-stub-0.1.0-SNAPSHOT.jar &            # APP-B stand-in on :8081
+java -jar integration-app/target/integration-app-0.1.0-SNAPSHOT.jar    # integration application on :8080
 curl localhost:8080/actuator/health        # {"status":"UP"...}
 curl -i localhost:8080/actuator/health | grep -i x-request-id   # X-Request-Id: INTX-<12 alphanumeric>
 ```
@@ -46,13 +48,18 @@ curl -i localhost:8080/actuator/health | grep -i x-request-id   # X-Request-Id: 
 | `INTEGRATION_APP_SHORT_NAME` | `INTX` | Shortname of the integration application (alphanumeric, no hyphens), used in request ids and logs |
 | `INTEGRATION_INBOUND_USER` / `INTEGRATION_INBOUND_PASSWORD` | none (required) | Account callers (APP-A) use for inbound calls |
 | `INTEGRATION_OPS_USER` / `INTEGRATION_OPS_PASSWORD` | none (required) | Separate operations account for `/actuator/info` and `/actuator/metrics` |
+| `INTEGRATION_APPB_USER` / `INTEGRATION_APPB_PASSWORD` | none (required) | Credentials the integration application uses towards APP-B |
+| `INTEGRATION_APPB_URL` | `http://localhost:8081` | APP-B base URL |
+| `INTEGRATION_APPB_TIMEOUT` | `10s` | Outbound timeout for APP-B (connect and read) |
+| `APPB_USER` / `APPB_PASSWORD` | none (required, stub only) | Accounts the APP-B stub accepts |
 | `INTEGRATION_LOG_DIR` | `logs` | Log file directory (set as `integration.log-dir`, see Logging) |
 | `INTEGRATION_DB_PATH` | `./data/integration` | H2 database file path (without extension). Mount its directory as a volume in containers |
 
 ## Modules
 
 - `integration-framework`: the reusable framework (library)
-- `integration-app`: sample integration application built on the framework
+- `integration-app`: sample integration application built on the framework (APP-A calls it, it calls APP-B)
+- `app-b-stub`: stand-in for APP-B (called application) for demos and end-to-end runs
 
 ## Request tracking
 
@@ -124,3 +131,24 @@ curl -i -u caller:<password> localhost:8080/api/v1/unknown          # 404 (authe
 curl -i localhost:8080/api/v1/unknown                               # 401 AUTH_FAILED
 curl -u ops:<password> localhost:8080/actuator/metrics              # operations account
 ```
+
+## Sample integration: getSomeData
+
+APP-A -> `GET /api/v1/getSomeData` (inbound account) -> controller -> Camel route `direct:getSomeData` ->
+`SomeDataService` (Business Service) -> `AppBClient` (client abstraction layer) -> APP-B `GET /api/data`.
+
+```bash
+curl -i -u <inbound user>:<password> localhost:8080/api/v1/getSomeData
+# 200 {"data":"hello from APP-B"} + X-Request-Id: INTX-...
+# stop the APP-B stub and call again: 502 {"...","errorCode":"APPB_UNAVAILABLE",...}
+```
+
+- The same request id is sent to APP-B as `X-Request-Id` and appears in `logs/appb.log` and in the audit record
+  (operation `getSomeData`).
+- APP-B timeout returns `504 APPB_TIMEOUT` (set `INTEGRATION_APPB_TIMEOUT`, e.g. `1s`, and call the stub with a delay).
+- The APP-B stub simulates failures with query parameters on `/api/data` (`?delayMs=3000`, `?fail=true`), for direct checks:
+  `curl -u <appb user>:<password> 'localhost:8081/api/data?fail=true'`.
+- Routes extend `IntegrationRouteBuilder` (no per-route error handling; failures reach the single error handler) and call
+  Business Services only. Only the client layer talks to APP-B.
+
+To add another application, follow `specs/integration-guide.md`.

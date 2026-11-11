@@ -33,7 +33,7 @@ class LoggingIntegrationTest {
         String appLine = appb.lines().filter(l -> l.contains("calling appb") && l.contains(requestId)).findFirst().orElseThrow();
         assertTrue(appLine.contains("\"requestId\":\"" + requestId + "\""));
         assertTrue(appLine.contains("\"service\":\"INTX\""));
-        assertTrue(appLine.contains("\"operation\":\"/api/v1/test/appb-log\""));
+        assertTrue(appLine.contains("\"operation\":\"appb-log\""));
         assertTrue(appLine.contains("\"status\":\"STARTED\""));
         // framework file: request lifecycle lines for the same request, but not the app line
         assertTrue(framework.lines().anyMatch(l -> l.contains("request completed") && l.contains(requestId)

@@ -25,3 +25,10 @@ management:
       exposure:
         include: health,info,metrics
 
+
+# APP-B (called application); timeout defaults to 10s
+appb:
+  base-url: ${INTEGRATION_APPB_URL:http://localhost:8081}
+  username: ${INTEGRATION_APPB_USER:}
+  password: ${INTEGRATION_APPB_PASSWORD:}
+  timeout: ${INTEGRATION_APPB_TIMEOUT:10s}

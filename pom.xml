@@ -23,6 +23,7 @@
   <modules>
     <module>integration-framework</module>
     <module>integration-app</module>
+    <module>app-b-stub</module>
   </modules>
 
   <dependencyManagement>

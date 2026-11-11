@@ -46,7 +46,7 @@ class AuditFilterTest {
 
         AuditRecord record = store.findByRequestId("INTX-abc").orElseThrow();
         assertEquals(RequestStatus.SUCCESS, record.status());
-        assertEquals("/api/v1/op", record.operation());
+        assertEquals("op", record.operation());
         assertNotNull(record.endTime());
     }
 
