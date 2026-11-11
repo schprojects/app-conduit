@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: integration-app
+
+integration:
+  app-short-name: ${INTEGRATION_APP_SHORT_NAME:INTX}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
