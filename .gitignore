@@ -1,0 +1,11 @@
+# data and secrets are never committed
+*.mv.db
+*.trace.db
+data/
+logs/
+*.log
+.env
+*.env
+target/
+.idea/
+.vscode/
