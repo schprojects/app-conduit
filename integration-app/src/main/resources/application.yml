@@ -1,6 +1,8 @@
 spring:
   application:
     name: integration-app
+  config:
+    import: optional:file:./.env[.properties]
   datasource:
     url: jdbc:h2:file:${INTEGRATION_DB_PATH:./data/integration}
     username: sa
@@ -9,6 +11,13 @@ spring:
 integration:
   app-short-name: ${INTEGRATION_APP_SHORT_NAME:INTX}
   log-dir: ${INTEGRATION_LOG_DIR:logs}
+  security:
+    inbound:
+      username: ${INTEGRATION_INBOUND_USER:}
+      password: ${INTEGRATION_INBOUND_PASSWORD:}
+    operations:
+      username: ${INTEGRATION_OPS_USER:}
+      password: ${INTEGRATION_OPS_PASSWORD:}
 
 management:
   endpoints:

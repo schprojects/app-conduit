@@ -12,6 +12,7 @@ Specs are in `specs/` (`requirements.md`, `high-level-architecture.md`, `integra
 | 3 | Audit: `AuditStore` abstraction, H2 file store (JDBC), audit record per request, startup recovery | done |
 | 4 | Standard error response, error codes, HTTP status mapping | done |
 | 5 | Structured JSON logging, per-application log files | done |
+| 6 | Security: inbound userid-password, operations account for actuator, credentials from env | done |
 
 ## Prerequisites
 
@@ -28,7 +29,11 @@ Versions: Camel 4.22.2 (LTS) on Spring Boot 4.1.1, fixed in the parent `pom.xml`
 
 ## Run
 
+Credentials are required at startup (the application refuses to start without them). Copy the example env file and set
+real values (`.env` is git-ignored; never commit it):
+
 ```bash
+cp .env.example .env     # then edit the values
 java -jar integration-app/target/integration-app-0.1.0-SNAPSHOT.jar
 curl localhost:8080/actuator/health        # {"status":"UP"...}
 curl -i localhost:8080/actuator/health | grep -i x-request-id   # X-Request-Id: INTX-<12 alphanumeric>
@@ -39,6 +44,8 @@ curl -i localhost:8080/actuator/health | grep -i x-request-id   # X-Request-Id: 
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `INTEGRATION_APP_SHORT_NAME` | `INTX` | Shortname of the integration application (alphanumeric, no hyphens), used in request ids and logs |
+| `INTEGRATION_INBOUND_USER` / `INTEGRATION_INBOUND_PASSWORD` | none (required) | Account callers (APP-A) use for inbound calls |
+| `INTEGRATION_OPS_USER` / `INTEGRATION_OPS_PASSWORD` | none (required) | Separate operations account for `/actuator/info` and `/actuator/metrics` |
 | `INTEGRATION_LOG_DIR` | `logs` | Log file directory (set as `integration.log-dir`, see Logging) |
 | `INTEGRATION_DB_PATH` | `./data/integration` | H2 database file path (without extension). Mount its directory as a volume in containers |
 
@@ -96,4 +103,24 @@ Isolation: lines are routed by the MDC key `app`.
 
 ```bash
 grep INTX-x7Gq2mK9pR4t logs/*.log
+```
+
+## Security
+
+Userid-password (HTTP Basic) behind the `Authenticator` abstraction (JWT bearer is future). Credentials come from the
+environment or the `.env` file, never from the repository or the image.
+
+| Endpoint | Access |
+|----------|--------|
+| `/actuator/health` | open (container health probes) |
+| `/actuator/info`, `/actuator/metrics` | operations account |
+| everything else (`/api/**`) | inbound account |
+
+Other actuator endpoints are not exposed; there is no Prometheus endpoint in revision 1. Missing or invalid credentials return
+`401` with `AUTH_FAILED` (and an audit record). Passwords and tokens are never logged or audited.
+
+```bash
+curl -i -u caller:<password> localhost:8080/api/v1/unknown          # 404 (authenticated)
+curl -i localhost:8080/api/v1/unknown                               # 401 AUTH_FAILED
+curl -u ops:<password> localhost:8080/actuator/metrics              # operations account
 ```

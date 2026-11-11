@@ -27,9 +27,7 @@ class ErrorResponseIntegrationTest {
     private AuditStore store;
 
     private HttpResponse<String> get(String path) throws Exception {
-        return HttpClient.newHttpClient().send(
-                HttpRequest.newBuilder(URI.create("http://localhost:" + port + path)).build(),
-                HttpResponse.BodyHandlers.ofString());
+        return TestHttp.get(port, path, TestHttp.INBOUND);
     }
 
     @Test

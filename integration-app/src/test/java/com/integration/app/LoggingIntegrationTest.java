@@ -22,9 +22,7 @@ class LoggingIntegrationTest {
 
     @Test
     void appSpecificLinesGoToTheirOwnFileAndFrameworkLinesToTheFrameworkFile() throws Exception {
-        HttpResponse<String> response = HttpClient.newHttpClient().send(
-                HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/test/appb-log")).build(),
-                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = TestHttp.get(port, "/api/v1/test/appb-log", TestHttp.INBOUND);
         String requestId = response.headers().firstValue("X-Request-Id").orElseThrow();
 
         // the "request completed" line is written after the response has been sent
