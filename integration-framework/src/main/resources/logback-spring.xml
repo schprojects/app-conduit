@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Structured JSON logging. Every line goes to stdout and to one file selected by the MDC key "app":
+  logs/<app>.log for an application's client layer and routes, logs/framework.log for everything else.
+  MDC keys requestId, service, operation and status appear as JSON fields.
+-->
+<configuration>
+  <springProperty scope="context" name="LOG_DIR" source="integration.log-dir" defaultValue="logs"/>
+
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+      <format>logstash</format>
+    </encoder>
+  </appender>
+
+  <appender name="FILES" class="ch.qos.logback.classic.sift.SiftingAppender">
+    <discriminator>
+      <key>app</key>
+      <defaultValue>framework</defaultValue>
+    </discriminator>
+    <sift>
+      <appender name="FILE-${app}" class="ch.qos.logback.core.FileAppender">
+        <file>${LOG_DIR}/${app}.log</file>
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+          <format>logstash</format>
+        </encoder>
+      </appender>
+    </sift>
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="CONSOLE"/>
+    <appender-ref ref="FILES"/>
+  </root>
+</configuration>

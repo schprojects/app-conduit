@@ -8,6 +8,7 @@ spring:
 
 integration:
   app-short-name: ${INTEGRATION_APP_SHORT_NAME:INTX}
+  log-dir: ${INTEGRATION_LOG_DIR:logs}
 
 management:
   endpoints:

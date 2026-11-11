@@ -11,6 +11,7 @@ Specs are in `specs/` (`requirements.md`, `high-level-architecture.md`, `integra
 | 2 | Request tracking: request id `<APP>-<12 alnum>`, `X-Request-Id` header, log context | done |
 | 3 | Audit: `AuditStore` abstraction, H2 file store (JDBC), audit record per request, startup recovery | done |
 | 4 | Standard error response, error codes, HTTP status mapping | done |
+| 5 | Structured JSON logging, per-application log files | done |
 
 ## Prerequisites
 
@@ -38,6 +39,7 @@ curl -i localhost:8080/actuator/health | grep -i x-request-id   # X-Request-Id: 
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `INTEGRATION_APP_SHORT_NAME` | `INTX` | Shortname of the integration application (alphanumeric, no hyphens), used in request ids and logs |
+| `INTEGRATION_LOG_DIR` | `logs` | Log file directory (set as `integration.log-dir`, see Logging) |
 | `INTEGRATION_DB_PATH` | `./data/integration` | H2 database file path (without extension). Mount its directory as a volume in containers |
 
 ## Modules
@@ -79,3 +81,19 @@ audited as `FAILED` with the same `errorCode`:
 
 Client layers throw `IntegrationException` (`timeout(...)`, `unavailable(...)`); `GlobalExceptionHandler` builds the response.
 Try: `curl -i localhost:8080/api/v1/unknown` returns 404 `UNKNOWN_OPERATION`.
+
+## Logging
+
+Logs are structured JSON (Logback, Spring Boot `logstash` format) and go to stdout and to files in `logs/` (git-ignored).
+Request lines carry `requestId`, `service` (integration application shortname), `operation` and `status`
+(`STARTED` while in flight, `SUCCESS`/`FAILED` on the final "request completed" line).
+
+Isolation: lines are routed by the MDC key `app`.
+- Lines logged inside `try (AppLogContext ctx = AppLogContext.enter("appb")) { ... }` (client layers and routes of that
+  application) go to `logs/appb.log`.
+- Everything else (startup, auth, request lifecycle) goes to `logs/framework.log`.
+- `requestId` is in every request line of every file, so one request can be followed across files.
+
+```bash
+grep INTX-x7Gq2mK9pR4t logs/*.log
+```
