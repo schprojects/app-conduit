@@ -3,21 +3,40 @@ spring:
     name: integration-app
   config:
     import: optional:file:./.env[.properties]
-  datasource:
-    url: jdbc:h2:file:${INTEGRATION_DB_PATH:./data/integration}
-    username: sa
-    password: ""
 
 integration:
   app-short-name: ${INTEGRATION_APP_SHORT_NAME:INTX}
-  log-dir: ${INTEGRATION_LOG_DIR:logs}
   security:
     inbound:
-      username: ${INTEGRATION_INBOUND_USER:}
+      user: ${INTEGRATION_INBOUND_USER:}
       password: ${INTEGRATION_INBOUND_PASSWORD:}
     operations:
-      username: ${INTEGRATION_OPS_USER:}
+      user: ${INTEGRATION_OPS_USER:}
       password: ${INTEGRATION_OPS_PASSWORD:}
+  connectors:
+    appb:
+      base-url: ${INTEGRATION_APPB_URL:http://localhost:8081}
+      timeout-ms: ${INTEGRATION_APPB_TIMEOUT_MS:10000}
+      auth:
+        user: ${INTEGRATION_APPB_USER:}
+        password: ${INTEGRATION_APPB_PASSWORD:}
+
+# One structured (JSON) log stream: stdout and one rolling file. The retention is also the audit retention.
+logging:
+  file:
+    name: ${INTEGRATION_LOG_DIR:logs}/integration.log
+  structured:
+    format:
+      console: logstash
+      file: logstash
+    json:
+      add:
+        service: ${integration.app-short-name}
+  logback:
+    rollingpolicy:
+      max-file-size: ${INTEGRATION_LOG_MAX_FILE_SIZE:20MB}
+      max-history: ${INTEGRATION_LOG_MAX_HISTORY:14}
+      total-size-cap: ${INTEGRATION_LOG_TOTAL_SIZE_CAP:500MB}
 
 management:
   endpoints:
@@ -25,10 +44,10 @@ management:
       exposure:
         include: health,info,metrics
 
-
-# APP-B (called application); timeout defaults to 10s
-appb:
-  base-url: ${INTEGRATION_APPB_URL:http://localhost:8081}
-  username: ${INTEGRATION_APPB_USER:}
-  password: ${INTEGRATION_APPB_PASSWORD:}
-  timeout: ${INTEGRATION_APPB_TIMEOUT:10s}
+camel:
+  main:
+    routes-include-pattern: classpath:camel/**/*.yaml
+    tracing: false
+  rest:
+    component: platform-http
+    client-request-validation: true

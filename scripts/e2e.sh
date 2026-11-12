@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # End-to-end check of the running jars (build first: ./mvnw verify).
-# Starts APP-B stub + integration application with throwaway credentials, database and logs in a temp dir.
+# Starts APP-B stub + integration application with throwaway credentials and logs in a temp dir.
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d)"
@@ -24,8 +24,8 @@ export APPB_USER=appb APPB_PASSWORD="$PW" SERVER_PORT=$STUB_PORT
 
 export INTEGRATION_APP_SHORT_NAME=INTX INTEGRATION_INBOUND_USER=caller INTEGRATION_INBOUND_PASSWORD="$PW" \
   INTEGRATION_OPS_USER=ops INTEGRATION_OPS_PASSWORD="$PW" INTEGRATION_APPB_USER=appb INTEGRATION_APPB_PASSWORD="$PW" \
-  INTEGRATION_APPB_URL=http://localhost:$STUB_PORT INTEGRATION_APPB_TIMEOUT=2s \
-  INTEGRATION_DB_PATH="$TMP/data/integration" INTEGRATION_LOG_DIR="$TMP/logs"
+  INTEGRATION_APPB_URL=http://localhost:$STUB_PORT INTEGRATION_APPB_TIMEOUT_MS=2000 \
+  INTEGRATION_LOG_DIR="$TMP/logs"
 ( cd "$TMP" && exec java -jar "$ROOT"/integration-app/target/integration-app-*-SNAPSHOT.jar --server.port=$APP_PORT >app.log 2>&1 ) & PIDS+=($!)
 APP_PID=${PIDS[1]}
 
@@ -41,18 +41,22 @@ check "metrics with inbound account -> 401"         401 "$(code -u caller:$PW $B
 check "metrics with operations account -> 200"      200 "$(code -u ops:$PW $BASE/actuator/metrics)"
 check "other actuator endpoints not exposed -> 404" 404 "$(code -u ops:$PW $BASE/actuator/env)"
 
-RID="$(curl -si -u caller:$PW $BASE/api/v1/getSomeData | tr -d '\r' | awk -F': ' 'tolower($1)=="x-request-id"{print $2}')"
+RESP="$(curl -si -u caller:$PW $BASE/api/v1/getSomeData | tr -d '\r')"
+RID="$(echo "$RESP" | awk -F': ' 'tolower($1)=="x-request-id"{print $2}')"
 case "$RID" in INTX-????????????) check "request id format" ok ok ;; *) check "request id format" ok "$RID" ;; esac
 sleep 1
-check "request id in framework log"  1 "$(grep -c "$RID" "$TMP/logs/framework.log" | awk '{print ($1>0)?1:0}')"
-check "request id in APP-B log"      1 "$(grep -c "$RID" "$TMP/logs/appb.log" | awk '{print ($1>0)?1:0}')"
+LOG="$TMP/logs/integration.log"
+check "audit: request.started line"   1 "$(grep "$RID" "$LOG" | grep -c '"message":"request.started"' | awk '{print ($1>0)?1:0}')"
+check "audit: request.completed SUCCESS line for getSomeData" 1 \
+  "$(grep "$RID" "$LOG" | grep '"message":"request.completed"' | grep -c '"status":"SUCCESS".*"operation":"getSomeData"\|"operation":"getSomeData".*"status":"SUCCESS"' | awk '{print ($1>0)?1:0}')"
+check "request id in connector.appb lines" 1 "$(grep "$RID" "$LOG" | grep -c '"logger_name":"connector.appb"' | awk '{print ($1>0)?1:0}')"
+check "APP-B received the same request id" 1 "$(echo "$RESP" | grep -c "\"receivedRequestId\":\"$RID\"")"
 
 kill "${PIDS[0]}"; sleep 1
 BODY="$(curl -s -u caller:$PW $BASE/api/v1/getSomeData)"
 check "APP-B down -> 502 APPB_UNAVAILABLE" 1 "$(echo "$BODY" | grep -c '"errorCode":"APPB_UNAVAILABLE"')"
 
 kill "$APP_PID"; wait "$APP_PID" 2>/dev/null
-[ -f "$TMP/data/integration.mv.db" ] && check "audit database file persisted" ok ok || check "audit database file persisted" ok missing
 
 [ $FAILED -eq 0 ] && echo "E2E OK" || echo "E2E FAILED"
 exit $FAILED

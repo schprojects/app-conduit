@@ -5,19 +5,11 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
-
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Enforces the architecture rules of the specs on production code (tests and the dev/test profile are excluded):
- * applications are called only through their client abstraction layer, and the framework stays reusable.
+ * Java rules of architecture.md section 12 (the route rules are in RouteConventionTest), checked on production code
+ * only: test sources and the dev/test routes are excluded.
  */
 class ArchitectureTest {
 
@@ -26,22 +18,14 @@ class ArchitectureTest {
             .importPackages("com.integration");
 
     @Test
-    void onlyTheClientLayerUsesHttpClients() {
-        noClasses().that().resideOutsideOfPackage("com.integration.app.appb..")
+    void onlyConnectorsUseHttpClientsOrVendorSdks() {
+        noClasses().that().resideOutsideOfPackage("com.integration.app.connectors..")
                 .should().dependOnClassesThat().resideInAnyPackage(
-                        "org.springframework.web.client..", "org.springframework.http.client..", "java.net.http..",
-                        "org.apache.camel.component.http..", "org.apache.camel.component.rest..")
-                .because("applications are called only through their client abstraction layer")
-                .check(PRODUCTION);
-    }
-
-    @Test
-    void onlyTheBusinessServiceUsesTheClient() {
-        noClasses().that().resideOutsideOfPackage("com.integration.app.appb..")
-                .and().doNotHaveSimpleName("SomeDataService")
-                .should().dependOnClassesThat().haveSimpleNameStartingWith("AppBClient")
-                .orShould().dependOnClassesThat().haveSimpleNameStartingWith("RestAppBClient")
-                .because("routes and controllers call Business Services, never the client layer directly")
+                        "java.net.http..", "org.springframework.web.client..", "org.springframework.http.client..",
+                        "org.apache.hc..", "org.apache.camel.component.http..",
+                        "com.vendor.sdk..")
+                .because("a target system is reached only through its connector (FR-4)")
+                .allowEmptyShould(true)
                 .check(PRODUCTION);
     }
 
@@ -54,21 +38,12 @@ class ArchitectureTest {
     }
 
     @Test
-    void routesDoNotUseHttpOrRestComponentsToCallApplications() throws IOException {
-        Pattern httpEndpoint = Pattern.compile("\"(rest|rest-api|http|https|netty-http|undertow|vertx-http):");
-        List<String> violations;
-        try (Stream<Path> sources = Files.walk(Path.of("src/main/java"))) {
-            violations = sources.filter(p -> p.toString().endsWith(".java"))
-                    .filter(p -> !p.toString().contains("/appb/"))
-                    .filter(p -> {
-                        try {
-                            return httpEndpoint.matcher(Files.readString(p)).find();
-                        } catch (IOException e) {
-                            throw new IllegalStateException(e);
-                        }
-                    })
-                    .map(Path::toString).toList();
-        }
-        assertEquals(List.of(), violations, "production routes must not call applications via rest:/http:");
+    void applicationHasNoControllers() {
+        noClasses().that().resideInAPackage("com.integration.app..")
+                .should().beAnnotatedWith("org.springframework.web.bind.annotation.RestController")
+                .orShould().beAnnotatedWith("org.springframework.stereotype.Controller")
+                .because("inbound operations come from the OpenAPI contract (FR-1, AC-17)")
+                .allowEmptyShould(true)
+                .check(PRODUCTION);
     }
 }

@@ -1,0 +1,33 @@
+- route:
+    id: appb-getSomeData
+    from:
+      uri: direct:appb.getSomeData
+      steps:
+        - setProperty:
+            name: targetApp
+            constant: APPB
+        - removeHeaders:
+            pattern: "*"
+        - setHeader:
+            name: CamelHttpMethod
+            constant: GET
+        - setHeader:
+            name: CamelHttpPath
+            constant: /api/data
+        - setHeader:
+            name: X-Request-Id
+            simple: "${exchangeProperty.requestId}"
+        - log:
+            message: "calling APP-B getSomeData"
+            logName: connector.appb
+        - to:
+            uri: "{{integration.connectors.appb.base-url}}"
+            parameters:
+              authMethod: Basic
+              authUsername: "{{integration.connectors.appb.auth.user}}"
+              authPassword: "RAW({{integration.connectors.appb.auth.password}})"
+              authenticationPreemptive: true
+              httpClient.responseTimeout: "{{integration.connectors.appb.timeout-ms}}"
+        - log:
+            message: "APP-B getSomeData succeeded"
+            logName: connector.appb

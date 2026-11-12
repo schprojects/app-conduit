@@ -1,0 +1,6 @@
+- route:
+    id: getSomeData
+    from:
+      uri: direct:getSomeData
+      steps:
+        - to: direct:appb.getSomeData

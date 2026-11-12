@@ -1,0 +1,7 @@
+- route:
+    id: testRequired
+    from:
+      uri: direct:testRequired
+      steps:
+        - setBody:
+            constant: '{"ok":true}'

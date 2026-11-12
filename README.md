@@ -1,7 +1,7 @@
 # Integration
 
 Lightweight, reusable integration framework (Spring Boot + Apache Camel) with a sample integration application.
-Specs are in `specs/` (`requirements.md`, `high-level-architecture.md`, `integration-guide.md`).
+Specs are in `specs/` (`requirements.md`, `high-level-architecture.md`, `integration-guide.md`, `architecture-guide.md`).
 Architecture: [architecture.md](architecture.md); decisions: [docs/adr](docs/adr/README.md).
 
 ## Status (by phase)
@@ -17,7 +17,7 @@ Architecture: [architecture.md](architecture.md); decisions: [docs/adr](docs/adr
 | 7 | Sample integration: APP-B stub, APP-B client layer, Business Service, Camel route, `getSomeData` | done |
 | 8 | Architecture tests, container image, compose, end-to-end script | done |
 | R0 | Revision 2 refactoring, phase 0: characterization tests and spikes (`docs/adr/0010`) | done |
-| R1 | Revision 2 refactoring, phase 1: Camel-native sample operation | planned |
+| R1 | Revision 2 refactoring, phase 1: Camel-native sample operation (`docs/adr/0011`) | done |
 | R2 | Revision 2 refactoring, phase 2: two-transport proof | planned |
 | R3 | Revision 2 refactoring, phase 3: documentation | planned |
 
@@ -35,9 +35,11 @@ Versions: Camel 4.22.2 (LTS) on Spring Boot 4.1.1, fixed in the parent `pom.xml`
 ./scripts/e2e.sh              # end-to-end run of the built jars (starts both apps on :18080/:18081, throwaway credentials)
 ```
 
-Architecture tests (`integration-app/.../architecture/ArchitectureTest`) enforce on production code: only the APP-B client
-layer uses HTTP clients (or Camel `rest:`/`http:`), only the Business Service uses the client, and the framework never depends
-on application code. Camel `rest:`/`http:` may be used by developers in tests and dev/test only.
+Convention tests run in the same build and enforce the rules of `architecture.md` section 12: `ArchitectureTest` (Java: only
+connectors use HTTP clients or vendor SDKs, the framework never depends on application code, no controllers) and
+`RouteConventionTest` (YAML routes: transport URIs only in `camel/connectors/`, capability endpoints set `targetApp`, operation routes call
+only capability endpoints and have no error handling, no asynchronous steps). Developer-only routes with `http:` go under
+`src/test/resources/camel/`; they are not packaged and not checked.
 
 ## Run
 
@@ -56,15 +58,15 @@ curl -i localhost:8080/actuator/health | grep -i x-request-id   # X-Request-Id: 
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `INTEGRATION_APP_SHORT_NAME` | `INTX` | Shortname of the integration application (alphanumeric, no hyphens), used in request ids and logs |
+| `INTEGRATION_APP_SHORT_NAME` | `INTX` | Shortname of the integration application (alphanumeric, no hyphens), used in request ids and logs (`service`) |
 | `INTEGRATION_INBOUND_USER` / `INTEGRATION_INBOUND_PASSWORD` | none (required) | Account callers (APP-A) use for inbound calls |
 | `INTEGRATION_OPS_USER` / `INTEGRATION_OPS_PASSWORD` | none (required) | Separate operations account for `/actuator/info` and `/actuator/metrics` |
-| `INTEGRATION_APPB_USER` / `INTEGRATION_APPB_PASSWORD` | none (required) | Credentials the integration application uses towards APP-B |
-| `INTEGRATION_APPB_URL` | `http://localhost:8081` | APP-B base URL |
-| `INTEGRATION_APPB_TIMEOUT` | `10s` | Outbound timeout for APP-B (connect and read) |
+| `INTEGRATION_APPB_USER` / `INTEGRATION_APPB_PASSWORD` | none (required) | Credentials the APP-B connector uses towards APP-B (`integration.connectors.appb.auth.*`) |
+| `INTEGRATION_APPB_URL` | `http://localhost:8081` | APP-B base URL (`integration.connectors.appb.base-url`) |
+| `INTEGRATION_APPB_TIMEOUT_MS` | `10000` | Outbound timeout for APP-B in milliseconds (`integration.connectors.appb.timeout-ms`) |
 | `APPB_USER` / `APPB_PASSWORD` | none (required, stub only) | Accounts the APP-B stub accepts |
-| `INTEGRATION_LOG_DIR` | `logs` | Log file directory (set as `integration.log-dir`, see Logging) |
-| `INTEGRATION_DB_PATH` | `./data/integration` | H2 database file path (without extension). Mount its directory as a volume in containers |
+| `INTEGRATION_LOG_DIR` | `logs` | Directory of the rolling log file `integration.log` |
+| `INTEGRATION_LOG_MAX_FILE_SIZE` / `INTEGRATION_LOG_MAX_HISTORY` / `INTEGRATION_LOG_TOTAL_SIZE_CAP` | `20MB` / `14` / `500MB` | Log rotation limits (`logging.logback.rollingpolicy.*`); the retention is the audit retention |
 
 ## Modules
 
@@ -80,16 +82,20 @@ and available in the log context (MDC key `requestId`).
 
 ## Audit
 
-Every inbound request except `/actuator/**` gets an audit record in the `audit_record` table (H2, file mode, plain JDBC behind
-the `AuditStore` interface): `requestId`, `serviceName`, `operation`, `status` (`STARTED`/`SUCCESS`/`FAILED`), `startTime`,
-`endTime`, `errorCode`, `errorMessage`. Times are UTC. Revision 2 runs as a single instance per database file.
-On startup, records still `STARTED` from a previous run are set to `FAILED` / `INTERNAL_ERROR` / `interrupted by restart`.
-The `data/` directory is git-ignored.
+Every inbound request except `/actuator/**` writes exactly two structured log lines on the logger `audit`:
+`request.started` (status `STARTED`) and `request.completed` (status `SUCCESS` for HTTP below 400, otherwise `FAILED`). Both carry
+`requestId`, `service`, `operation` (the OpenAPI `operationId`, `UNKNOWN` when no operation was reached, for example a 401), `status`; the
+completed line adds `httpStatus`, `durationMs` and, for failures, `errorCode`. There is no database: the retention of the log files is the
+audit retention, and a request interrupted by a restart is a `request.started` line without a `request.completed` line.
+
+```bash
+grep '"logger_name":"audit"' logs/integration.log | grep INTX-x7Gq2mK9pR4t
+```
 
 ## Error responses
 
-Failures return the standard body (status is always `FAILED`; the HTTP code tells the kind of failure) and the request is
-audited as `FAILED` with the same `errorCode`:
+Failures return the standard body (status is always `FAILED`; the HTTP code tells the kind of failure) and the `request.completed`
+audit line carries the same `errorCode`:
 
 ```json
 {"requestId":"INTX-x7Gq2mK9pR4t","status":"FAILED","errorCode":"APPB_TIMEOUT","message":"APPB timed out"}
@@ -97,35 +103,37 @@ audited as `FAILED` with the same `errorCode`:
 
 | HTTP | errorCode | Meaning |
 |------|-----------|---------|
-| 400 | `INVALID_REQUEST` | bad request |
-| 401 | `AUTH_FAILED` | authentication failure (phase 6) |
-| 404 | `UNKNOWN_OPERATION` | unknown operation |
-| 502 | `<TARGETAPP>_UNAVAILABLE` | called application returned an error / unavailable |
-| 504 | `<TARGETAPP>_TIMEOUT` | called application timed out |
+| 400 | `INVALID_REQUEST` | request does not satisfy the contract |
+| 401 | `AUTH_FAILED` | authentication failure |
+| 404 | `UNKNOWN_OPERATION` | no operation in the contract matches |
+| 404 | `<TARGET>_NOT_FOUND` | the target reports the resource does not exist |
+| 502 | `<TARGET>_UNAVAILABLE` | the target returned any other error or is unreachable |
+| 504 | `<TARGET>_TIMEOUT` | the target timed out |
 | 500 | `INTERNAL_ERROR` | internal error (details are logged, never returned) |
 
-Client layers throw `IntegrationException` (`timeout(...)`, `unavailable(...)`); `GlobalExceptionHandler` builds the response.
-Try: `curl -i localhost:8080/api/v1/unknown` returns 404 `UNKNOWN_OPERATION`.
+`ErrorMapper` is the one place that classifies a failure. Connectors only fail (with an exception); the shared Camel error rule
+(`IntegrationErrors`) and `ErrorResponseWriter` build the response. Try: `curl -i -u <inbound user>:<password> localhost:8080/api/v1/unknown`
+returns 404 `UNKNOWN_OPERATION`.
 
 ## Logging
 
-Logs are structured JSON (Logback, Spring Boot `logstash` format) and go to stdout and to files in `logs/` (git-ignored).
-Request lines carry `requestId`, `service` (integration application shortname), `operation` and `status`
-(`STARTED` while in flight, `SUCCESS`/`FAILED` on the final "request completed" line).
-
-Isolation: lines are routed by the MDC key `app`.
-- Lines logged inside `try (AppLogContext ctx = AppLogContext.enter("appb")) { ... }` (client layers and routes of that
-  application) go to `logs/appb.log`.
-- Everything else (startup, auth, request lifecycle) goes to `logs/framework.log`.
-- `requestId` is in every request line of every file, so one request can be followed across files.
+One structured (JSON, Spring Boot `logstash` format) log stream per application: stdout and one rolling file
+`logs/integration.log` (git-ignored). Every line carries `service` (the integration application shortname) and `logger_name`; every line
+written while a request is processed also carries `requestId` and `operation`. Connector lines use the logger `connector.<system>`
+(for example `connector.appb`), so lines can be filtered per connector from the one stream:
 
 ```bash
-grep INTX-x7Gq2mK9pR4t logs/*.log
+grep INTX-x7Gq2mK9pR4t logs/integration.log                         # follow one request across framework and connector
+grep '"logger_name":"connector.appb"' logs/integration.log          # APP-B connector lines only
 ```
+
+The file rotates by size and history and is bounded by a total size cap (`INTEGRATION_LOG_*`, see Configuration). In containers collect
+stdout or mount `/logs`; without one of the two a container restart loses the audit trail. Passwords, tokens and request or response
+bodies are never logged; Camel's message tracer is off.
 
 ## Security
 
-Userid-password (HTTP Basic) behind the `Authenticator` abstraction (JWT bearer is future). Credentials come from the
+Userid-password (HTTP Basic) with Spring Security, two filter chains (JWT bearer is future). Credentials come from the
 environment or the `.env` file, never from the repository or the image.
 
 | Endpoint | Access |
@@ -134,8 +142,9 @@ environment or the `.env` file, never from the repository or the image.
 | `/actuator/info`, `/actuator/metrics` | operations account |
 | everything else (`/api/**`) | inbound account |
 
-Other actuator endpoints are not exposed; there is no Prometheus endpoint in revision 2. Missing or invalid credentials return
-`401` with `AUTH_FAILED` (and an audit record). Passwords and tokens are never logged or audited.
+Other actuator endpoints are not exposed; there is no Prometheus endpoint in revision 2. Camel route metrics are part of
+`/actuator/metrics`. Missing or invalid credentials return `401` with `AUTH_FAILED` (and audit lines). The caller's `Authorization` and
+`X-Request-Id` headers never reach a target system. Passwords and tokens are never logged.
 
 ```bash
 curl -i -u caller:<password> localhost:8080/api/v1/unknown          # 404 (authenticated)
@@ -145,8 +154,9 @@ curl -u ops:<password> localhost:8080/actuator/metrics              # operations
 
 ## Sample integration: getSomeData
 
-APP-A -> `GET /api/v1/getSomeData` (inbound account) -> controller -> Camel route `direct:getSomeData` ->
-`SomeDataService` (Business Service) -> `AppBClient` (client abstraction layer) -> APP-B `GET /api/data`.
+APP-A -> `GET /api/v1/getSomeData` (inbound account) -> contract `openapi/integration-api.yaml` (served by Camel) -> operation route
+`direct:getSomeData` (`camel/operations/get-some-data.yaml`) -> capability endpoint `direct:appb.getSomeData` of the APP-B connector
+(`camel/connectors/appb/appb-get-some-data.yaml`) -> APP-B `GET /api/data`.
 
 ```bash
 curl -i -u <inbound user>:<password> localhost:8080/api/v1/getSomeData
@@ -154,20 +164,20 @@ curl -i -u <inbound user>:<password> localhost:8080/api/v1/getSomeData
 # stop the APP-B stub and call again: 502 {"...","errorCode":"APPB_UNAVAILABLE",...}
 ```
 
-- The same request id is sent to APP-B as `X-Request-Id` and appears in `logs/appb.log` and in the audit record
+- The same request id is sent to APP-B as `X-Request-Id` and appears in the connector log lines and in both audit lines
   (operation `getSomeData`).
-- APP-B timeout returns `504 APPB_TIMEOUT` (set `INTEGRATION_APPB_TIMEOUT`, e.g. `1s`, and call the stub with a delay).
+- APP-B timeout returns `504 APPB_TIMEOUT` (set `INTEGRATION_APPB_TIMEOUT_MS`, e.g. `1000`, and call the stub with a delay).
 - The APP-B stub simulates failures with query parameters on `/api/data` (`?delayMs=3000`, `?fail=true`), for direct checks:
   `curl -u <appb user>:<password> 'localhost:8081/api/data?fail=true'`.
-- Routes extend `IntegrationRouteBuilder` (no per-route error handling; failures reach the single error handler) and call
-  Business Services only. Only the client layer talks to APP-B.
+- Operation routes and connectors have no error handling of their own (failures reach the shared error rule) and contain no audit or
+  request-id code. Only the connector talks to APP-B.
 
-To add another application, follow `specs/integration-guide.md`.
+To add another operation or application, follow `specs/integration-guide.md` (concepts and reasons: `specs/architecture-guide.md`).
 
 ## Container and on-premise
 
 The same configuration works from a plain JVM jar (on-premise, see Run) and from containers. The image runs as a non-root
-user; the audit database lives in the `/data` volume and the logs in `/logs`. Credentials are passed as environment
+user; the logs (and with them the audit lines) live in the `/logs` volume. Credentials are passed as environment
 variables, never baked into the image. `/actuator/health` is open for health probes.
 
 ```bash
@@ -175,13 +185,13 @@ variables, never baked into the image. `/actuator/health` is open for health pro
 cp .env.example .env                   # set the values (same for INTEGRATION_APPB_* and APPB_*)
 docker compose up --build -d           # integration-app on :8080, app-b-stub internal
 curl -u <inbound user>:<password> localhost:8080/api/v1/getSomeData
-docker compose down                    # add -v to also delete the data and log volumes
+docker compose down                    # add -v to also delete the log volume
 ```
 
 A single image is built per jar with `docker build --build-arg JAR=<path to jar> .` (see `Dockerfile`).
-Revision 2 runs as a single instance per database file; Kubernetes/OpenShift and multi-instance are out of scope.
+Revision 2 runs as a single instance; Kubernetes/OpenShift and multi-instance are out of scope.
 
 ## Not in revision 2 (future)
 
-Prometheus export, JWT bearer tokens, vault-based secrets, retry/circuit-breaker, automatic audit purge, multi-instance
-(shared database such as PostgreSQL behind the `AuditStore` abstraction).
+Prometheus export, JWT bearer tokens, vault-based secrets, retry/circuit-breaker, a queryable audit store, multi-instance
+(see `architecture.md` section 14.4 and 15).

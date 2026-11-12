@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Observable behaviour of getSomeData (docs: specs/requirements.md, compatibility rule). Uses only HTTP and the
  * fake APP-B, so it must stay green through the refactoring. The only line that changes is the APP-B URL property.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "appb.timeout=2s")
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "integration.connectors.appb.timeout-ms=2000")
 class GetSomeDataCharacterizationTest {
 
     private static final String REQUEST_ID_FORMAT = "INTX-[A-Za-z0-9]{12}";
@@ -32,7 +32,7 @@ class GetSomeDataCharacterizationTest {
 
     @DynamicPropertySource
     static void appB(DynamicPropertyRegistry registry) {
-        registry.add("appb.base-url", APP_B::baseUrl);
+        registry.add("integration.connectors.appb.base-url", APP_B::baseUrl);
     }
 
     @AfterAll
@@ -73,7 +73,7 @@ class GetSomeDataCharacterizationTest {
         HttpResponse<String> response = get("/api/v1/getSomeData", TestHttp.INBOUND, null);
 
         assertEquals(response.headers().firstValue("X-Request-Id").orElseThrow(), APP_B.lastRequestId());
-        assertNotEquals(TestHttp.INBOUND, APP_B.lastAuthorization());
+
         assertEquals(TestHttp.basic("appb-user", "appb-pw"), APP_B.lastAuthorization());
     }
 

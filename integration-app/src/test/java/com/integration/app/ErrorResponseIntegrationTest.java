@@ -1,55 +1,45 @@
 package com.integration.app;
 
-import com.integration.framework.audit.AuditRecord;
-import com.integration.framework.audit.AuditStore;
-import com.integration.framework.audit.RequestStatus;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/** Failures outside the sample operation (APP-B failures are covered by GetSomeDataCharacterizationTest). */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ErrorResponseIntegrationTest {
 
     @Value("${local.server.port}")
     private int port;
 
-    @Autowired
-    private AuditStore store;
-
     private HttpResponse<String> get(String path) throws Exception {
         return TestHttp.get(port, path, TestHttp.INBOUND);
-    }
-
-    @Test
-    void timeoutReturnsStandardErrorAndAuditFailure() throws Exception {
-        HttpResponse<String> response = get("/api/v1/test/timeout");
-
-        String requestId = response.headers().firstValue("X-Request-Id").orElseThrow();
-        assertEquals(504, response.statusCode());
-        assertTrue(response.body().contains("\"requestId\":\"" + requestId + "\""));
-        assertTrue(response.body().contains("\"status\":\"FAILED\""));
-        assertTrue(response.body().contains("\"errorCode\":\"APPB_TIMEOUT\""));
-        AuditRecord record = store.findByRequestId(requestId).orElseThrow();
-        assertEquals(RequestStatus.FAILED, record.status());
-        assertEquals("APPB_TIMEOUT", record.errorCode());
     }
 
     @Test
     void unknownOperationReturns404Standard() throws Exception {
         HttpResponse<String> response = get("/api/v1/does-not-exist");
 
+        String requestId = response.headers().firstValue("X-Request-Id").orElseThrow();
         assertEquals(404, response.statusCode());
         assertTrue(response.body().contains("\"errorCode\":\"UNKNOWN_OPERATION\""));
+        assertTrue(response.body().contains("\"requestId\":\"" + requestId + "\""));
+    }
+
+    @Test
+    void contractViolationReturns400Standard() throws Exception {
+        HttpResponse<String> response = get("/api/v1/test/required");
+
+        String requestId = response.headers().firstValue("X-Request-Id").orElseThrow();
+        assertEquals(400, response.statusCode());
+        assertTrue(response.body().contains("\"errorCode\":\"INVALID_REQUEST\""));
+        assertTrue(response.body().contains("\"requestId\":\"" + requestId + "\""));
+        assertEquals(200, get("/api/v1/test/required?q=x").statusCode());
     }
 
     @Test

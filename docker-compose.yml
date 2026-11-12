@@ -27,11 +27,9 @@ services:
       INTEGRATION_APPB_PASSWORD: ${INTEGRATION_APPB_PASSWORD}
       INTEGRATION_APPB_URL: http://app-b-stub:8081
     volumes:
-      - integration-data:/data
       - integration-logs:/logs
     depends_on:
       - app-b-stub
 
 volumes:
-  integration-data:
   integration-logs:

@@ -1,0 +1,31 @@
+# Test copy of the production contract plus one test-only operation (shadows src/main/resources/openapi/integration-api.yaml on the test classpath).
+openapi: 3.0.3
+info:
+  title: Integration API
+  version: "1"
+  description: Every inbound operation of this integration application. Operations are described in the caller's vocabulary.
+paths:
+  /api/v1/getSomeData:
+    get:
+      operationId: getSomeData
+      summary: Sample operation, returns the data of APP-B
+      responses:
+        "200":
+          description: The data
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/v1/test/required:
+    get:
+      operationId: testRequired
+      summary: Test only. Lets tests violate the contract (missing required parameter q).
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ok

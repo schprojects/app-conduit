@@ -1,0 +1,4 @@
+- rest:
+    openApi:
+      specification: openapi/integration-api.yaml
+      missingOperation: fail
