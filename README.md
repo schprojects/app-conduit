@@ -18,8 +18,8 @@ Architecture: [architecture.md](architecture.md); decisions: [docs/adr](docs/adr
 | 8 | Architecture tests, container image, compose, end-to-end script | done |
 | R0 | Revision 2 refactoring, phase 0: characterization tests and spikes (`docs/adr/0010`) | done |
 | R1 | Revision 2 refactoring, phase 1: Camel-native sample operation (`docs/adr/0011`) | done |
-| R2 | Revision 2 refactoring, phase 2: two-transport proof | planned |
-| R3 | Revision 2 refactoring, phase 3: documentation | planned |
+| R2 | Revision 2 refactoring, phase 2: two-transport proof (test-only `appx.getBom`, `twotransport/` tests) | done |
+| R3 | Revision 2 refactoring, phase 3: documentation (guides, architecture, ADRs) | done |
 
 ## Prerequisites
 
@@ -39,7 +39,8 @@ Convention tests run in the same build and enforce the rules of `architecture.md
 connectors use HTTP clients or vendor SDKs, the framework never depends on application code, no controllers) and
 `RouteConventionTest` (YAML routes: transport URIs only in `camel/connectors/`, capability endpoints set `targetApp`, operation routes call
 only capability endpoints and have no error handling, no asynchronous steps). Developer-only routes with `http:` go under
-`src/test/resources/camel/`; they are not packaged and not checked.
+`src/test/resources/camel/`; they are not packaged and not checked. The test-only `appx.getBom` connector there shows one capability
+reachable over two transports (`integration.connectors.appx.transport`, per-capability override `integration.connectors.appx.getBom.transport`).
 
 ## Run
 
