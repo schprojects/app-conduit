@@ -3,23 +3,14 @@
 Lightweight, reusable integration framework (Spring Boot + Apache Camel) with a sample integration application.
 Specs are in `specs/` (`requirements.md`, `high-level-architecture.md`, `integration-guide.md`, `architecture-guide.md`).
 Architecture: [architecture.md](architecture.md); decisions: [docs/adr](docs/adr/README.md).
+New integration application (project setup, STS, build, deployment): [specs/integration-guide.md](specs/integration-guide.md), sections "Setting up a new integration application" and "Building and delivering".
 
-## Status (by phase)
+## Status
 
-| Phase | Content | State |
-|-------|---------|-------|
-| 1 | Project skeleton, app starts, health UP | done |
-| 2 | Request tracking: request id `<APP>-<12 alnum>`, `X-Request-Id` header, log context | done |
-| 3 | Audit: `AuditStore` abstraction, H2 file store (JDBC), audit record per request, startup recovery | done |
-| 4 | Standard error response, error codes, HTTP status mapping | done |
-| 5 | Structured JSON logging, per-application log files | done |
-| 6 | Security: inbound userid-password, operations account for actuator, credentials from env | done |
-| 7 | Sample integration: APP-B stub, APP-B client layer, Business Service, Camel route, `getSomeData` | done |
-| 8 | Architecture tests, container image, compose, end-to-end script | done |
-| R0 | Revision 2 refactoring, phase 0: characterization tests and spikes (`docs/adr/0010`) | done |
-| R1 | Revision 2 refactoring, phase 1: Camel-native sample operation (`docs/adr/0011`) | done |
-| R2 | Revision 2 refactoring, phase 2: two-transport proof (test-only `appx.getBom`, `twotransport/` tests) | done |
-| R3 | Revision 2 refactoring, phase 3: documentation (guides, architecture, ADRs) | done |
+Revision 2 (Camel-native, lean) is implemented: contract-first OpenAPI, Camel YAML routes with one connector per target system,
+a shared error rule, request tracking and audit through Camel constructs, Spring Security, structured logging, a two-transport proof
+(test-only `appx.getBom`), a container image and an end-to-end script. Decisions are in [docs/adr](docs/adr/README.md), the structure in
+[architecture.md](architecture.md).
 
 ## Prerequisites
 
