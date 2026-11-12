@@ -66,17 +66,17 @@ curl -i localhost:8080/actuator/health | grep -i x-request-id   # X-Request-Id: 
 | `INTEGRATION_APPB_URL` | `http://localhost:8081` | APP-B base URL (`integration.connectors.appb.base-url`) |
 | `INTEGRATION_APPB_TIMEOUT_MS` | `10000` | Outbound timeout for APP-B in milliseconds (`integration.connectors.appb.timeout-ms`) |
 | `APPB_USER` / `APPB_PASSWORD` | none (required, stub only) | Accounts the APP-B stub accepts |
-| `INTEGRATION_VIRTUAL_THREADS` | `true` | Run requests on virtual threads (JDK 21). Set `false` to use the bounded pool below |
-| `INTEGRATION_POOL_CORE_SIZE` / `INTEGRATION_POOL_MAX_SIZE` / `INTEGRATION_POOL_QUEUE_CAPACITY` | `50` / `200` / `100` | Request pool when virtual threads are off (visible as `executor.*` in `/actuator/metrics`) |
 | `INTEGRATION_LOG_DIR` | `logs` | Directory of the rolling log file `integration.log` |
 | `INTEGRATION_LOG_MAX_FILE_SIZE` / `INTEGRATION_LOG_MAX_HISTORY` / `INTEGRATION_LOG_TOTAL_SIZE_CAP` | `20MB` / `14` / `500MB` | Log rotation limits (`logging.logback.rollingpolicy.*`); the retention is the audit retention |
 
 ## Concurrency
 
-Camel's platform-http runs every request on Spring's task executor, one thread per request, synchronously through the routes.
-Nothing in the tracing depends on the thread: the request id and operation travel on the Camel exchange. By default requests run on
-virtual threads, so there is no pool to size; slow targets only park a thread. With `INTEGRATION_VIRTUAL_THREADS=false` a bounded pool
-is used (`INTEGRATION_POOL_*`). A request holds its thread at most for the per-target timeout (`INTEGRATION_APPB_TIMEOUT_MS`, default 10 s).
+Requirement NFR-13: concurrent requests are independent, so a slow target does not stall the others. Requests run on virtual
+threads (JDK 21, `spring.threads.virtual.enabled=true`), so no pool needs sizing; a slow target only parks a thread, and a request
+holds it at most for the per-target timeout (`INTEGRATION_APPB_TIMEOUT_MS`, default 10 s). Nothing in the tracing depends on the
+thread: the request id and operation travel on the Camel exchange. `ParallelRequestsTest` proves 50 slow requests finish in about one
+slow time with their own ids. The outbound HTTP connection pool of Camel's http component (`camel.component.http.*` in
+`application.yml`, 100 connections per target) is sized so it is not the ceiling either; its default of 20 was.
 Graceful shutdown is on; Tomcat's own limits (`server.tomcat.threads.max`, `server.tomcat.max-connections`, `server.tomcat.accept-count`)
 bound the front door and can be set as usual Spring Boot properties.
 

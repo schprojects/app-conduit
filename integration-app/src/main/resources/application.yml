@@ -1,17 +1,10 @@
 spring:
   application:
     name: integration-app
-  # Camel's platform-http runs each request on Spring's task executor. Virtual threads (JDK 21) need no pool sizing; set
-  # INTEGRATION_VIRTUAL_THREADS=false to use a bounded pool instead (spring.task.execution.pool.* below).
+  # Requests run on virtual threads (JDK 21): concurrency is not limited by a pool (NFR-13).
   threads:
     virtual:
-      enabled: ${INTEGRATION_VIRTUAL_THREADS:true}
-  task:
-    execution:
-      pool:
-        core-size: ${INTEGRATION_POOL_CORE_SIZE:50}
-        max-size: ${INTEGRATION_POOL_MAX_SIZE:200}
-        queue-capacity: ${INTEGRATION_POOL_QUEUE_CAPACITY:100}
+      enabled: true
   config:
     import: optional:file:./.env[.properties]
 
@@ -66,6 +59,11 @@ camel:
   mdc:
     enabled: true
     custom-exchange-properties: requestId,operation
+  # Outbound connection pool of Camel's http component (default 20 per target): sized so it is not the concurrency ceiling (NFR-13)
+  component:
+    http:
+      connections-per-route: 100
+      max-total-connections: 200
   rest:
     component: platform-http
     client-request-validation: true

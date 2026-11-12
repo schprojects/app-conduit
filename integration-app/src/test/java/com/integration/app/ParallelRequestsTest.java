@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -25,13 +26,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Many slow requests at once: there is no hidden thread ceiling (Spring's default pool would run 8 at a time), requests do not
- * mix up their ids, and every request has exactly one started and one completed line with its own operation.
+ * NFR-13: many slow requests at once complete in about one slow time, requests do not mix up their ids, and every request has
+ * exactly one started and one completed line with its own operation.
  */
 @ExtendWith(OutputCaptureExtension.class)
-abstract class ParallelRequestsBase {
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class ParallelRequestsTest {
 
-    private static final int REQUESTS = 20;
+    private static final int REQUESTS = 50;
     private static final int DELAY_MS = 1000;
     private static FakeAppB APP_B;
 
@@ -55,7 +57,7 @@ abstract class ParallelRequestsBase {
     private int port;
 
     @Test
-    void twentySlowRequestsRunConcurrentlyWithTheirOwnIds(CapturedOutput output) throws Exception {
+    void manySlowRequestsRunConcurrentlyWithTheirOwnIds(CapturedOutput output) throws Exception {
         APP_B.respondSlowly(DELAY_MS);
         ExecutorService clients = Executors.newFixedThreadPool(REQUESTS);
         long start = System.nanoTime();
@@ -79,7 +81,7 @@ abstract class ParallelRequestsBase {
         clients.shutdown();
 
         assertEquals(REQUESTS, ids.size());
-        assertTrue(elapsedMs < 4 * DELAY_MS, "20 parallel 1 s requests took " + elapsedMs + " ms");
+        assertTrue(elapsedMs < 4 * DELAY_MS, REQUESTS + " parallel 1 s requests took " + elapsedMs + " ms");
         for (String id : ids) {
             List<Map<String, Object>> lines = AuditLines.await(output, "audit", id, 2);
             assertEquals(2, lines.size(), id);
