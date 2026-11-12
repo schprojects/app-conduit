@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: conduit-appb-stub
+  config:
+    import: optional:file:./.env[.properties]
+
+server:
+  port: 8081
+
+appb:
+  username: ${APPB_USER:}
+  password: ${APPB_PASSWORD:}

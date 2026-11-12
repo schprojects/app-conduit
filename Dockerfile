@@ -1,4 +1,4 @@
-# Runs one of the built jars: docker build --build-arg JAR=integration-app/target/integration-app-0.1.0-SNAPSHOT.jar .
+# Runs one of the built jars: docker build --build-arg JAR=conduit-sample/target/conduit-sample-0.1.0-SNAPSHOT.jar .
 FROM eclipse-temurin:21-jre
 ARG JAR
 RUN useradd --system --uid 10001 app && mkdir -p /logs && chown app /logs

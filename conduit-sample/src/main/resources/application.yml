@@ -1,0 +1,69 @@
+spring:
+  application:
+    name: conduit-sample
+  # Requests run on virtual threads (JDK 21): concurrency is not limited by a pool (NFR-13).
+  threads:
+    virtual:
+      enabled: true
+  config:
+    import: optional:file:./.env[.properties]
+
+integration:
+  app-short-name: ${INTEGRATION_APP_SHORT_NAME:INTX}
+  security:
+    inbound:
+      user: ${INTEGRATION_INBOUND_USER:}
+      password: ${INTEGRATION_INBOUND_PASSWORD:}
+    operations:
+      user: ${INTEGRATION_OPS_USER:}
+      password: ${INTEGRATION_OPS_PASSWORD:}
+  connectors:
+    appb:
+      base-url: ${INTEGRATION_APPB_URL:http://localhost:8081}
+      timeout-ms: ${INTEGRATION_APPB_TIMEOUT_MS:10000}
+      auth:
+        user: ${INTEGRATION_APPB_USER:}
+        password: ${INTEGRATION_APPB_PASSWORD:}
+
+# One structured (JSON) log stream: stdout and one rolling file. The retention is also the audit retention.
+logging:
+  file:
+    name: ${INTEGRATION_LOG_DIR:logs}/integration.log
+  structured:
+    format:
+      console: logstash
+      file: logstash
+    json:
+      add:
+        service: ${integration.app-short-name}
+  logback:
+    rollingpolicy:
+      max-file-size: ${INTEGRATION_LOG_MAX_FILE_SIZE:20MB}
+      max-history: ${INTEGRATION_LOG_MAX_HISTORY:14}
+      total-size-cap: ${INTEGRATION_LOG_TOTAL_SIZE_CAP:500MB}
+
+server:
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+camel:
+  main:
+    routes-include-pattern: classpath:camel/**/*.yaml
+    tracing: false
+  # Camel's MDC service: these exchange properties appear on every log line written while the exchange is processed
+  mdc:
+    enabled: true
+    custom-exchange-properties: requestId,operation
+  # Outbound connection pool of Camel's http component (default 20 per target): sized so it is not the concurrency ceiling (NFR-13)
+  component:
+    http:
+      connections-per-route: 100
+      max-total-connections: 200
+  rest:
+    component: platform-http
+    client-request-validation: true

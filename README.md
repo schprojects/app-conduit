@@ -1,8 +1,8 @@
-# Integration
+# app-conduit
 
 Lightweight, reusable integration framework (Spring Boot + Apache Camel) with a sample integration application.
 Specs are in `specs/` (`requirements.md`, `high-level-architecture.md`, `integration-guide.md`, `architecture-guide.md`).
-Architecture: [architecture.md](architecture.md); decisions: [docs/adr](docs/adr/README.md).
+Architecture: [architecture.md](architecture.md); decisions: [docs/adr](docs/adr/README.md) (names: ADR 0013).
 New integration application (project setup, STS, build, deployment): [specs/integration-guide.md](specs/integration-guide.md), sections "Setting up a new integration application" and "Building and delivering".
 
 ## Status
@@ -40,8 +40,8 @@ real values (`.env` is git-ignored; never commit it). Use the same values for `I
 
 ```bash
 cp .env.example .env     # then edit the values
-java -jar app-b-stub/target/app-b-stub-0.1.0-SNAPSHOT.jar &            # APP-B stand-in on :8081
-java -jar integration-app/target/integration-app-0.1.0-SNAPSHOT.jar    # integration application on :8080
+java -jar conduit-appb-stub/target/conduit-appb-stub-0.1.0-SNAPSHOT.jar &            # APP-B stand-in on :8081
+java -jar conduit-sample/target/conduit-sample-0.1.0-SNAPSHOT.jar    # integration application on :8080
 curl localhost:8080/actuator/health        # {"status":"UP"...}
 curl -i localhost:8080/actuator/health | grep -i x-request-id   # X-Request-Id: INTX-<12 alphanumeric>
 ```
@@ -73,9 +73,9 @@ bound the front door and can be set as usual Spring Boot properties.
 
 ## Modules
 
-- `integration-framework`: the reusable framework (library)
-- `integration-app`: sample integration application built on the framework (APP-A calls it, it calls APP-B)
-- `app-b-stub`: stand-in for APP-B (called application) for demos and end-to-end runs
+- `conduit-framework`: the reusable framework (library)
+- `conduit-sample`: sample integration application built on the framework (APP-A calls it, it calls APP-B)
+- `conduit-appb-stub`: stand-in for APP-B (called application) for demos and end-to-end runs
 
 ## Request tracking
 
@@ -186,7 +186,7 @@ variables, never baked into the image. `/actuator/health` is open for health pro
 ```bash
 ./mvnw verify                          # builds the jars the image copies
 cp .env.example .env                   # set the values (same for INTEGRATION_APPB_* and APPB_*)
-docker compose up --build -d           # integration-app on :8080, app-b-stub internal
+docker compose up --build -d           # conduit-sample on :8080, conduit-appb-stub internal
 curl -u <inbound user>:<password> localhost:8080/api/v1/getSomeData
 docker compose down                    # add -v to also delete the log volume
 ```

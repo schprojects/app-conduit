@@ -1,3 +1,3 @@
 *
-!integration-app/target/*.jar
-!app-b-stub/target/*.jar
+!conduit-sample/target/*.jar
+!conduit-appb-stub/target/*.jar

@@ -10,7 +10,7 @@
     <relativePath/>
   </parent>
 
-  <groupId>com.integration</groupId>
+  <groupId>com.appconduit</groupId>
   <artifactId>app-conduit</artifactId>
   <version>0.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
@@ -22,9 +22,9 @@
   </properties>
 
   <modules>
-    <module>integration-framework</module>
-    <module>integration-app</module>
-    <module>app-b-stub</module>
+    <module>conduit-framework</module>
+    <module>conduit-sample</module>
+    <module>conduit-appb-stub</module>
   </modules>
 
   <dependencyManagement>
@@ -37,8 +37,8 @@
         <scope>import</scope>
       </dependency>
       <dependency>
-        <groupId>com.integration</groupId>
-        <artifactId>integration-framework</artifactId>
+        <groupId>com.appconduit</groupId>
+        <artifactId>conduit-framework</artifactId>
         <version>${project.version}</version>
       </dependency>
     </dependencies>

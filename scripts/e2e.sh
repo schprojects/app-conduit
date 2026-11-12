@@ -20,13 +20,13 @@ code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 wait_for() { for _ in $(seq 1 60); do [ "$(code "$1")" == "200" ] && return 0; sleep 1; done; return 1; }
 
 export APPB_USER=appb APPB_PASSWORD="$PW" SERVER_PORT=$STUB_PORT
-( cd "$TMP" && exec java -jar "$ROOT"/app-b-stub/target/app-b-stub-*-SNAPSHOT.jar --server.port=$STUB_PORT >stub.log 2>&1 ) & PIDS+=($!)
+( cd "$TMP" && exec java -jar "$ROOT"/conduit-appb-stub/target/conduit-appb-stub-*-SNAPSHOT.jar --server.port=$STUB_PORT >stub.log 2>&1 ) & PIDS+=($!)
 
 export INTEGRATION_APP_SHORT_NAME=INTX INTEGRATION_INBOUND_USER=caller INTEGRATION_INBOUND_PASSWORD="$PW" \
   INTEGRATION_OPS_USER=ops INTEGRATION_OPS_PASSWORD="$PW" INTEGRATION_APPB_USER=appb INTEGRATION_APPB_PASSWORD="$PW" \
   INTEGRATION_APPB_URL=http://localhost:$STUB_PORT INTEGRATION_APPB_TIMEOUT_MS=2000 \
   INTEGRATION_LOG_DIR="$TMP/logs"
-( cd "$TMP" && exec java -jar "$ROOT"/integration-app/target/integration-app-*-SNAPSHOT.jar --server.port=$APP_PORT >app.log 2>&1 ) & PIDS+=($!)
+( cd "$TMP" && exec java -jar "$ROOT"/conduit-sample/target/conduit-sample-*-SNAPSHOT.jar --server.port=$APP_PORT >app.log 2>&1 ) & PIDS+=($!)
 APP_PID=${PIDS[1]}
 
 wait_for "http://localhost:$APP_PORT/actuator/health" || { echo "FAIL  application did not start"; cat "$TMP/app.log" | tail -20; exit 1; }
