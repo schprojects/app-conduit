@@ -5,18 +5,20 @@ import com.integration.framework.error.ErrorResponseProcessor;
 import com.integration.framework.error.ErrorResponseWriter;
 import com.integration.framework.route.IntegrationErrors;
 import com.integration.framework.route.RequestContextInterceptor;
-import com.integration.framework.route.RequestThreadExecutor;
 import com.integration.framework.security.SecurityConfig;
+import com.integration.framework.tracking.AuditLog;
+import com.integration.framework.tracking.RequestAuditNotifier;
+import com.integration.framework.tracking.RequestIdFilter;
 import com.integration.framework.tracking.RequestIdGenerator;
-import com.integration.framework.tracking.RequestLifecycleFilter;
+import org.apache.camel.CamelContext;
 import org.apache.camel.spi.RoutePolicyFactory;
+import org.apache.camel.spring.boot.CamelContextConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import tools.jackson.databind.json.JsonMapper;
 
 @AutoConfiguration(beforeName = {
@@ -32,25 +34,37 @@ public class IntegrationFrameworkAutoConfiguration {
         return new RequestIdGenerator(properties.appShortName());
     }
 
-    /** Outermost filter: runs before Spring Security, so rejected calls also get an id and audit lines. */
+    /** Outermost filter: runs before Spring Security, so every response (also a 401) carries the id. */
     @Bean
-    FilterRegistrationBean<RequestLifecycleFilter> requestLifecycleFilter(RequestIdGenerator generator) {
-        FilterRegistrationBean<RequestLifecycleFilter> registration =
-                new FilterRegistrationBean<>(new RequestLifecycleFilter(generator));
+    FilterRegistrationBean<RequestIdFilter> requestIdFilter(RequestIdGenerator generator) {
+        FilterRegistrationBean<RequestIdFilter> registration = new FilterRegistrationBean<>(new RequestIdFilter(generator));
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return registration;
     }
 
-    /** Picked by Camel's platform-http engine ahead of the pooled executors (see RequestThreadExecutor). */
     @Bean
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    RequestThreadExecutor requestThreadExecutor() {
-        return new RequestThreadExecutor();
+    AuditLog auditLog() {
+        return new AuditLog();
+    }
+
+    /** Registers the audit notifier with Camel's management strategy (Camel Spring Boot's own extension point). */
+    @Bean
+    CamelContextConfiguration requestAuditRegistration(AuditLog audit) {
+        return new CamelContextConfiguration() {
+            @Override
+            public void beforeApplicationStart(CamelContext context) {
+                context.getManagementStrategy().addEventNotifier(new RequestAuditNotifier(audit));
+            }
+
+            @Override
+            public void afterApplicationStart(CamelContext context) {
+            }
+        };
     }
 
     @Bean
-    ErrorResponseWriter errorResponseWriter(JsonMapper mapper) {
-        return new ErrorResponseWriter(mapper);
+    ErrorResponseWriter errorResponseWriter(JsonMapper mapper, AuditLog audit) {
+        return new ErrorResponseWriter(mapper, audit);
     }
 
     @Bean
@@ -64,8 +78,8 @@ public class IntegrationFrameworkAutoConfiguration {
     }
 
     @Bean
-    RequestContextInterceptor requestContextInterceptor() {
-        return new RequestContextInterceptor();
+    RequestContextInterceptor requestContextInterceptor(AuditLog audit) {
+        return new RequestContextInterceptor(audit);
     }
 
     @Bean

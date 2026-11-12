@@ -1,16 +1,18 @@
 package com.integration.framework.error;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.apache.camel.Exchange;
 import org.apache.camel.Message;
 import org.apache.camel.Processor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import tools.jackson.databind.json.JsonMapper;
 
-import static com.integration.framework.tracking.RequestLifecycleFilter.ERROR_CODE_KEY;
-import static com.integration.framework.tracking.RequestLifecycleFilter.REQUEST_ID_HEADER;
-import static com.integration.framework.tracking.RequestLifecycleFilter.REQUEST_ID_KEY;
+import static com.integration.framework.route.RequestContextInterceptor.ERROR_CODE_PROPERTY;
+import static com.integration.framework.route.RequestContextInterceptor.HTTP_ENTRY_PROPERTY;
+import static com.integration.framework.route.RequestContextInterceptor.SERVLET_REQUEST_HEADER;
+import static com.integration.framework.tracking.RequestIdFilter.REQUEST_ID_HEADER;
+import static com.integration.framework.tracking.RequestIdFilter.REQUEST_ID_KEY;
 
 /** The shared Camel error rule: turns any failure in a route into the standard error response. */
 public class ErrorResponseProcessor implements Processor {
@@ -47,15 +49,18 @@ public class ErrorResponseProcessor implements Processor {
         String contentType = message.getHeader(Exchange.CONTENT_TYPE, String.class);
         boolean json = contentType != null && contentType.contains("json");
         if (!json && Integer.valueOf(400).equals(message.getHeader(Exchange.HTTP_RESPONSE_CODE, Integer.class))) {
+            exchange.setProperty(HTTP_ENTRY_PROPERTY, true);
             write(exchange, ErrorMapper.INVALID_REQUEST);
         }
     }
 
     private void write(Exchange exchange, ErrorMapper.Failure failure) {
-        MDC.put(ERROR_CODE_KEY, failure.errorCode());
+        exchange.setProperty(ERROR_CODE_PROPERTY, failure.errorCode());
         String requestId = exchange.getProperty(REQUEST_ID_KEY, String.class);
         if (requestId == null) {
-            requestId = MDC.get(REQUEST_ID_KEY);
+            HttpServletRequest request = exchange.getMessage().getHeader(SERVLET_REQUEST_HEADER, HttpServletRequest.class);
+            requestId = request == null ? null : (String) request.getAttribute(REQUEST_ID_KEY);
+            exchange.setProperty(REQUEST_ID_KEY, requestId);
         }
 
         Message message = exchange.getMessage();

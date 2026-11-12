@@ -1,6 +1,17 @@
 spring:
   application:
     name: integration-app
+  # Camel's platform-http runs each request on Spring's task executor. Virtual threads (JDK 21) need no pool sizing; set
+  # INTEGRATION_VIRTUAL_THREADS=false to use a bounded pool instead (spring.task.execution.pool.* below).
+  threads:
+    virtual:
+      enabled: ${INTEGRATION_VIRTUAL_THREADS:true}
+  task:
+    execution:
+      pool:
+        core-size: ${INTEGRATION_POOL_CORE_SIZE:50}
+        max-size: ${INTEGRATION_POOL_MAX_SIZE:200}
+        queue-capacity: ${INTEGRATION_POOL_QUEUE_CAPACITY:100}
   config:
     import: optional:file:./.env[.properties]
 
@@ -38,6 +49,9 @@ logging:
       max-history: ${INTEGRATION_LOG_MAX_HISTORY:14}
       total-size-cap: ${INTEGRATION_LOG_TOTAL_SIZE_CAP:500MB}
 
+server:
+  shutdown: graceful
+
 management:
   endpoints:
     web:
@@ -48,6 +62,10 @@ camel:
   main:
     routes-include-pattern: classpath:camel/**/*.yaml
     tracing: false
+  # Camel's MDC service: these exchange properties appear on every log line written while the exchange is processed
+  mdc:
+    enabled: true
+    custom-exchange-properties: requestId,operation
   rest:
     component: platform-http
     client-request-validation: true

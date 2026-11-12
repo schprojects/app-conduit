@@ -69,6 +69,15 @@ class GetSomeDataCharacterizationTest {
     }
 
     @Test
+    void responsesCarryExactlyOneRequestIdHeader() throws Exception {
+        for (String path : new String[]{"/api/v1/getSomeData", "/api/v1/does-not-exist"}) {
+            assertEquals(1, get(path, TestHttp.INBOUND, null).headers().allValues("X-Request-Id").size(), path);
+        }
+        APP_B.respondWithStatus(500);
+        assertEquals(1, get("/api/v1/getSomeData", TestHttp.INBOUND, null).headers().allValues("X-Request-Id").size());
+    }
+
+    @Test
     void outboundCallCarriesTheSameRequestIdAndOwnCredentials() throws Exception {
         HttpResponse<String> response = get("/api/v1/getSomeData", TestHttp.INBOUND, null);
 

@@ -128,4 +128,32 @@ class AuditAndLoggingIntegrationTest {
     void cameltracerIsOff() {
         assertNotEquals("true", environment.getProperty("camel.main.tracing"));
     }
+
+    @Test
+    void everyKindOfRequestHasExactlyOneStartedAndOneCompletedLine(CapturedOutput output) throws Exception {
+        String[][] cases = {
+                {"/api/v1/does-not-exist", "UNKNOWN_OPERATION", "404"},
+                {"/api/v1/test/required", "INVALID_REQUEST", "400"},
+                {"/api/v1/test/boom", "INTERNAL_ERROR", "500"}};
+        for (String[] c : cases) {
+            String requestId = TestHttp.get(port, c[0], TestHttp.INBOUND).headers().firstValue("X-Request-Id").orElseThrow();
+
+            List<Map<String, Object>> lines = AuditLines.await(output, "audit", requestId, 2);
+            assertEquals(2, lines.size(), c[0]);
+            assertEquals("request.started", lines.get(0).get("message"), c[0]);
+            assertEquals("request.completed", lines.get(1).get("message"), c[0]);
+            assertEquals("FAILED", lines.get(1).get("status"), c[0]);
+            assertEquals(c[2], lines.get(1).get("httpStatus"), c[0]);
+            assertEquals(c[1], lines.get(1).get("errorCode"), c[0]);
+            assertEquals("UNKNOWN", lines.get(1).get("operation"), c[0]);
+        }
+    }
+
+    @Test
+    void actuatorCallsAreNotAudited(CapturedOutput output) throws Exception {
+        String requestId = TestHttp.get(port, "/actuator/health", null).headers().firstValue("X-Request-Id").orElseThrow();
+
+        Thread.sleep(200);
+        assertEquals(0, AuditLines.forRequest(output.getOut(), "audit", requestId).size());
+    }
 }

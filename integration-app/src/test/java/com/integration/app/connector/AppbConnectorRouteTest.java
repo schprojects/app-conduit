@@ -7,7 +7,6 @@ import org.apache.camel.ProducerTemplate;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -40,17 +39,13 @@ class AppbConnectorRouteTest {
         APP_B.respondOk();
     }
 
-    /** The request id comes from the log context, as for a real request (the entry interceptor reads it there). */
+    /** The request id is an exchange property, as the entry interceptor sets it for a real request. */
     private Exchange call() {
-        MDC.put("requestId", "INTX-test12345678");
-        try {
-            return template.request("direct:appb.getSomeData", exchange -> {
-                exchange.getMessage().setHeader("Authorization", TestHttp.INBOUND);
-                exchange.getMessage().setHeader("X-Request-Id", "EVIL-123");
-            });
-        } finally {
-            MDC.clear();
-        }
+        return template.request("direct:appb.getSomeData", exchange -> {
+            exchange.setProperty("requestId", "INTX-test12345678");
+            exchange.getMessage().setHeader("Authorization", TestHttp.INBOUND);
+            exchange.getMessage().setHeader("X-Request-Id", "EVIL-123");
+        });
     }
 
     @Test

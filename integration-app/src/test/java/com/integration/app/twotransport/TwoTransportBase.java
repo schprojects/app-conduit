@@ -5,7 +5,6 @@ import org.apache.camel.ProducerTemplate;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,13 +39,11 @@ abstract class TwoTransportBase {
     void healthy() {
         sdk.fail(AppxSdkBomService.Fault.NONE);
         rest.fail(AppxSdkBomService.Fault.NONE);
-        MDC.clear();
     }
 
     private Exchange callOperation(AppxSdkBomService.Fault fault) {
         sdk.fail(fault);
         rest.fail(fault);
-        MDC.put("requestId", "INTX-test12345678");
         return template.request("direct:getPartBom", exchange -> { });
     }
 
