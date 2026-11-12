@@ -2,6 +2,7 @@
 
 Lightweight, reusable integration framework (Spring Boot + Apache Camel) with a sample integration application.
 Specs are in `specs/` (`requirements.md`, `high-level-architecture.md`, `integration-guide.md`).
+Architecture: [architecture.md](architecture.md); decisions: [docs/adr](docs/adr/README.md).
 
 ## Status (by phase)
 
@@ -15,6 +16,10 @@ Specs are in `specs/` (`requirements.md`, `high-level-architecture.md`, `integra
 | 6 | Security: inbound userid-password, operations account for actuator, credentials from env | done |
 | 7 | Sample integration: APP-B stub, APP-B client layer, Business Service, Camel route, `getSomeData` | done |
 | 8 | Architecture tests, container image, compose, end-to-end script | done |
+| R0 | Revision 2 refactoring, phase 0: characterization tests and spikes (`docs/adr/0010`) | done |
+| R1 | Revision 2 refactoring, phase 1: Camel-native sample operation | planned |
+| R2 | Revision 2 refactoring, phase 2: two-transport proof | planned |
+| R3 | Revision 2 refactoring, phase 3: documentation | planned |
 
 ## Prerequisites
 
@@ -77,7 +82,7 @@ and available in the log context (MDC key `requestId`).
 
 Every inbound request except `/actuator/**` gets an audit record in the `audit_record` table (H2, file mode, plain JDBC behind
 the `AuditStore` interface): `requestId`, `serviceName`, `operation`, `status` (`STARTED`/`SUCCESS`/`FAILED`), `startTime`,
-`endTime`, `errorCode`, `errorMessage`. Times are UTC. Revision 1 runs as a single instance per database file.
+`endTime`, `errorCode`, `errorMessage`. Times are UTC. Revision 2 runs as a single instance per database file.
 On startup, records still `STARTED` from a previous run are set to `FAILED` / `INTERNAL_ERROR` / `interrupted by restart`.
 The `data/` directory is git-ignored.
 
@@ -129,7 +134,7 @@ environment or the `.env` file, never from the repository or the image.
 | `/actuator/info`, `/actuator/metrics` | operations account |
 | everything else (`/api/**`) | inbound account |
 
-Other actuator endpoints are not exposed; there is no Prometheus endpoint in revision 1. Missing or invalid credentials return
+Other actuator endpoints are not exposed; there is no Prometheus endpoint in revision 2. Missing or invalid credentials return
 `401` with `AUTH_FAILED` (and an audit record). Passwords and tokens are never logged or audited.
 
 ```bash
@@ -174,9 +179,9 @@ docker compose down                    # add -v to also delete the data and log 
 ```
 
 A single image is built per jar with `docker build --build-arg JAR=<path to jar> .` (see `Dockerfile`).
-Revision 1 runs as a single instance per database file; Kubernetes/OpenShift and multi-instance are out of scope.
+Revision 2 runs as a single instance per database file; Kubernetes/OpenShift and multi-instance are out of scope.
 
-## Not in revision 1 (future)
+## Not in revision 2 (future)
 
 Prometheus export, JWT bearer tokens, vault-based secrets, retry/circuit-breaker, automatic audit purge, multi-instance
 (shared database such as PostgreSQL behind the `AuditStore` abstraction).

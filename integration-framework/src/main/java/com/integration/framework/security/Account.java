@@ -1,6 +1,6 @@
 package com.integration.framework.security;
 
-/** A userid-password account (revision 1). Values come from the environment / env file, never from the repository. */
+/** A userid-password account (revision 2). Values come from the environment / env file, never from the repository. */
 public record Account(String username, String password) {
 
     public Account {
