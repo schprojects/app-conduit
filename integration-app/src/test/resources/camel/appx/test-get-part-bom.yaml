@@ -1,0 +1,7 @@
+# Test-only operation route over the test-only appx connector (not part of the contract).
+- route:
+    id: getPartBom
+    from:
+      uri: direct:getPartBom
+      steps:
+        - to: direct:appx.getBom

@@ -1,0 +1,35 @@
+# Test-only connector (architecture.md 6.5): one capability reachable over two transports, chosen by configuration.
+- route:
+    id: appx-getBom
+    from:
+      uri: direct:appx.getBom
+      steps:
+        - setProperty:
+            name: targetApp
+            constant: APPX
+        - choice:
+            when:
+              - simple: "${properties:integration.connectors.appx.getBom.transport:{{integration.connectors.appx.transport}}} == 'sdk'"
+                steps:
+                  - to: direct:appx.getBom.sdk
+            otherwise:
+              steps:
+                - to: direct:appx.getBom.rest
+
+- route:
+    id: appx-getBom-sdk
+    from:
+      uri: direct:appx.getBom.sdk
+      steps:
+        - bean:
+            ref: appxSdkBomService
+            method: getBom
+
+- route:
+    id: appx-getBom-rest
+    from:
+      uri: direct:appx.getBom.rest
+      steps:
+        - bean:
+            ref: appxRestStub
+            method: getBom
