@@ -9,3 +9,6 @@ logs/
 target/
 .idea/
 .vscode/
+
+# organisation-specific copies of files that name real systems (kept locally, never committed)
+local/
