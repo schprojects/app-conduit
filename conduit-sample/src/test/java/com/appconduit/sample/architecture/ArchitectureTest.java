@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
- * Java rules of architecture.md section 12 (the route rules are in RouteConventionTest), checked on production code
- * only: test sources and the dev/test routes are excluded.
+ * Java architecture rules: only connectors use HTTP clients or vendor SDKs (FR-4), the framework does not depend on application code, no
+ * controllers (AC-17). The route rules are in RouteConventionTest. Checked on production code only: test sources and the dev/test routes are excluded.
  */
 class ArchitectureTest {
 

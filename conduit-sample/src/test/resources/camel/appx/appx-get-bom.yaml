@@ -1,4 +1,4 @@
-# Test-only connector (architecture.md 6.5): one capability reachable over two transports, chosen by configuration.
+# Test-only connector: one capability reachable over two transports, chosen by configuration.
 - route:
     id: appx-getBom
     from:

@@ -1,15 +1,14 @@
 # app-conduit
 
 Lightweight, reusable integration framework (Spring Boot + Apache Camel) with a sample integration application.
-Architecture: [architecture.md](architecture.md); decisions are recorded as numbered ADRs that are kept, with the requirements, in a separate private repository (project names: ADR 0013).
+The architecture document, the requirements and the numbered decision records (ADRs) are maintained separately, in a private repository (project names: ADR 0013).
 New integration application (project setup, STS, build, deployment): [docs/deployment-guide.md](docs/deployment-guide.md).
 
 ## Status
 
 Revision 2 (Camel-native, lean) is implemented: contract-first OpenAPI, Camel YAML routes with one connector per target system,
 a shared error rule, request tracking and audit through Camel constructs, Spring Security, structured logging, a two-transport proof
-(test-only `appx.getBom`), a container image and an end-to-end script. Decisions are recorded as ADRs (separate private repository), the structure in
-[architecture.md](architecture.md).
+(test-only `appx.getBom`), a container image and an end-to-end script. The structure is described in the sections below.
 
 ## Prerequisites
 
@@ -25,7 +24,7 @@ Versions: Camel 4.22.2 (LTS) on Spring Boot 4.1.1, fixed in the parent `pom.xml`
 ./scripts/e2e.sh              # end-to-end run of the built jars (starts both apps on :18080/:18081, throwaway credentials)
 ```
 
-Convention tests run in the same build and enforce the rules of `architecture.md` section 12: `ArchitectureTest` (Java: only
+Convention tests run in the same build and enforce the architecture rules: `ArchitectureTest` (Java: only
 connectors use HTTP clients or vendor SDKs, the framework never depends on application code, no controllers) and
 `RouteConventionTest` (YAML routes: transport URIs only in `camel/connectors/`, capability endpoints set `targetApp`, operation routes call
 only capability endpoints and have no error handling, no asynchronous steps). Developer-only routes with `http:` go under
@@ -174,7 +173,7 @@ curl -i -u <inbound user>:<password> localhost:8080/api/v1/getSomeData
 - Operation routes and connectors have no error handling of their own (failures reach the shared error rule) and contain no audit or
   request-id code. Only the connector talks to APP-B.
 
-To add another operation or application, follow [docs/deployment-guide.md](docs/deployment-guide.md) (project setup) and `architecture.md` section 6 (contract, operation routes, connectors).
+To add another operation or application, follow [docs/deployment-guide.md](docs/deployment-guide.md) (project setup); the sample operation under "Sample integration" shows the contract, the operation route and the connector.
 
 ## Container and on-premise
 
@@ -196,4 +195,4 @@ Revision 2 runs as a single instance; Kubernetes/OpenShift and multi-instance ar
 ## Not in revision 2 (future)
 
 Prometheus export, JWT bearer tokens, vault-based secrets, retry/circuit-breaker, a queryable audit store, multi-instance
-(see `architecture.md` section 14.4 and 15).
+(kept out deliberately to stay lean).

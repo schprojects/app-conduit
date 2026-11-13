@@ -5,7 +5,7 @@ how to deploy them. Every command in this guide was run on a clean example proje
 `orders`) against the sample APP-B stand-in of this repository; replace the example names with yours. Steps that depend on tools that were not
 available when this was written are marked **not verified**.
 
-For the design see [architecture.md](../architecture.md); for running this repository see the [README](../README.md).
+For running this repository see the [README](../README.md).
 
 ## 1. Prerequisites
 

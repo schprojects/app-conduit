@@ -3,11 +3,11 @@
 - always have a runbook with details called README.md
 - the application must run exactly like README.md documentation
 - every change MUST update the README
-- Maintain an architecture.md showing the architecture. Should be reconciled for every architectural change so that at anytime it gives us a complete picture of the architecture of the system
+- Maintain an architecture.md showing the architecture; it lives in the specs repository (`specs/architecture.md`), never in the code repository. It should be reconciled for every architectural change so that at anytime it gives us a complete picture of the architecture of the system
 - Architectural changes get into ADR. ADRs live in the specs repository (`specs/adr/`), never in the code repository.
 - write unit tests, integration tests, end-to-end tests and refine them later with human intervention or otherwise
 - done is only when all the tests pass and application runs as per README.md
 - always use OOAD, clean architecture and clean code principles
 - the code should be very simple
 - never commit any data, secrets etc unless EXPLICITLY asked for
-- specs and ADRs (the `specs/` folder) and code are separate git repositories: the specs repository (specs and ADRs) is ALWAYS private, the code repository is private or public as the user chooses. `specs/` is git-ignored in the code repository; commit spec changes in the specs repository and code changes in the code repository, never mixed (ADR 0014)
+- specs, ADRs and architecture.md (the `specs/` folder) and code are separate git repositories: the specs repository is ALWAYS private and ALWAYS named `<code repo name>-specs` (`app-conduit-specs` for `app-conduit`), the code repository is private or public as the user chooses. `specs/` is git-ignored in the code repository; commit spec changes in the specs repository and code changes in the code repository, never mixed (ADR 0014)

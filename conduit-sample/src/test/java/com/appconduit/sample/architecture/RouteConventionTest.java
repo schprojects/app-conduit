@@ -16,7 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
- * Route rules of architecture.md section 12, checked on the packaged route files (src/main/resources/camel).
+ * Route architecture rules (transport URIs only in connectors, operation routes call capability endpoints only, no error handling or async steps in
+ * operation routes), checked on the packaged route files (src/main/resources/camel).
  * ArchUnit cannot see YAML routes, so the files are parsed. Dev/test routes live under src/test/resources/camel
  * and are not checked.
  */
