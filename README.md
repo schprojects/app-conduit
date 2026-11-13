@@ -1,14 +1,14 @@
 # app-conduit
 
 Lightweight, reusable integration framework (Spring Boot + Apache Camel) with a sample integration application.
-Architecture: [architecture.md](architecture.md); decisions: [docs/adr](docs/adr/README.md) (names: ADR 0013).
+Architecture: [architecture.md](architecture.md); decisions are recorded as numbered ADRs that are kept, with the requirements, in a separate private repository (project names: ADR 0013).
 New integration application (project setup, STS, build, deployment): [docs/deployment-guide.md](docs/deployment-guide.md).
 
 ## Status
 
 Revision 2 (Camel-native, lean) is implemented: contract-first OpenAPI, Camel YAML routes with one connector per target system,
 a shared error rule, request tracking and audit through Camel constructs, Spring Security, structured logging, a two-transport proof
-(test-only `appx.getBom`), a container image and an end-to-end script. Decisions are in [docs/adr](docs/adr/README.md), the structure in
+(test-only `appx.getBom`), a container image and an end-to-end script. Decisions are recorded as ADRs (separate private repository), the structure in
 [architecture.md](architecture.md).
 
 ## Prerequisites
