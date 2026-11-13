@@ -12,3 +12,6 @@ target/
 
 # organisation-specific copies of files that name real systems (kept locally, never committed)
 local/
+
+# the specs are a separate, always private repository checked out here
+specs/

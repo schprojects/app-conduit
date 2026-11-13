@@ -1,9 +1,10 @@
 # app-conduit
 
 Lightweight, reusable integration framework (Spring Boot + Apache Camel) with a sample integration application.
-Specs are in `specs/` (`requirements.md`, `high-level-architecture.md`, `integration-guide.md`, `architecture-guide.md`).
+The specs (`requirements.md`, `high-level-architecture.md`, `integration-guide.md`, `architecture-guide.md`) live in a separate, always private
+repository (`app-conduit-specs`). Clone it into `specs/` of this folder (git-ignored here); nothing in this repository needs it to build or run (ADR 0014).
 Architecture: [architecture.md](architecture.md); decisions: [docs/adr](docs/adr/README.md) (names: ADR 0013).
-New integration application (project setup, STS, build, deployment): [specs/integration-guide.md](specs/integration-guide.md), sections "Setting up a new integration application" and "Building and delivering".
+New integration application (project setup, STS, build, deployment): `specs/integration-guide.md` in the specs repository, sections "Setting up a new integration application" and "Building and delivering".
 
 ## Status
 

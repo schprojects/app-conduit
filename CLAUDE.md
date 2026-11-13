@@ -10,3 +10,4 @@
 - always use OOAD, clean architecture and clean code principles
 - the code should be very simple
 - never commit any data, secrets etc unless EXPLICITLY asked for
+- specs (the `specs/` folder) and code are separate git repositories: the specs repository is ALWAYS private, the code repository is private or public as the user chooses. `specs/` is git-ignored in the code repository; commit spec changes in the specs repository and code changes in the code repository, never mixed (ADR 0014)
