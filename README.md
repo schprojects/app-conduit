@@ -1,10 +1,8 @@
 # app-conduit
 
 Lightweight, reusable integration framework (Spring Boot + Apache Camel) with a sample integration application.
-The specs (`requirements.md`, `high-level-architecture.md`, `integration-guide.md`, `architecture-guide.md`) live in a separate, always private
-repository (`app-conduit-specs`). Clone it into `specs/` of this folder (git-ignored here); nothing in this repository needs it to build or run (ADR 0014).
 Architecture: [architecture.md](architecture.md); decisions: [docs/adr](docs/adr/README.md) (names: ADR 0013).
-New integration application (project setup, STS, build, deployment): `specs/integration-guide.md` in the specs repository, sections "Setting up a new integration application" and "Building and delivering".
+New integration application (project setup, STS, build, deployment): [docs/deployment-guide.md](docs/deployment-guide.md).
 
 ## Status
 
@@ -176,7 +174,7 @@ curl -i -u <inbound user>:<password> localhost:8080/api/v1/getSomeData
 - Operation routes and connectors have no error handling of their own (failures reach the shared error rule) and contain no audit or
   request-id code. Only the connector talks to APP-B.
 
-To add another operation or application, follow `specs/integration-guide.md` (concepts and reasons: `specs/architecture-guide.md`).
+To add another operation or application, follow [docs/deployment-guide.md](docs/deployment-guide.md) (project setup) and `architecture.md` section 6 (contract, operation routes, connectors).
 
 ## Container and on-premise
 

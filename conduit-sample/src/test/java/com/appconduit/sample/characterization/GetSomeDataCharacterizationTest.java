@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Observable behaviour of getSomeData (docs: specs/requirements.md, compatibility rule). Uses only HTTP and the
+ * Observable behaviour of getSomeData (the compatibility rule of the requirements). Uses only HTTP and the
  * fake APP-B, so it must stay green through the refactoring. The only line that changes is the APP-B URL property.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "integration.connectors.appb.timeout-ms=2000")
